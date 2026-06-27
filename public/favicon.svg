@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <rect width="64" height="64" rx="14" fill="#111111"/>
+  <!-- Left stroke of N -->
+  <rect x="10" y="10" width="7" height="44" fill="#ffffff"/>
+  <!-- Right stroke of N -->
+  <rect x="47" y="10" width="7" height="44" fill="#ffffff"/>
+  <!-- Diagonal of N -->
+  <polygon points="17,10 28,10 54,54 47,54" fill="#ffffff"/>
+  <!-- GREEN accent bar -->
+  <rect x="22" y="10" width="6" height="44" fill="#1a7a2e"/>
+</svg>
