@@ -3234,7 +3234,13 @@ function Main() {
 
           <div className="sb-foot">
             <div className="u-row" onClick={() => setPage('profil')}>
-              <div className="u-av">{(user.initials || user.name?.charAt(0) || "?").substring(0, 2)}</div>
+              <div className="u-av" style={{ overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {user.photo ? (
+                  <img src={assetUrl(user.photo)} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  (user.initials || user.name?.charAt(0) || "?").substring(0, 2)
+                )}
+              </div>
               <div>
                 <div className="u-name">{user.name}</div>
                 <div className="u-role">{isSuperAdmin ? '👑 Super Admin' : isGerant ? t('role_admin') : t('role_member')}</div>
@@ -3288,8 +3294,12 @@ function Main() {
                 <PremiumNotifIcon />
                 <div className="dot-badge"></div>
               </div>
-              <div className="av-topbar" onClick={() => setPage('profil')}>
-                {(user.initials || user.name?.charAt(0) || "?").substring(0, 2)}
+              <div className="av-topbar" onClick={() => setPage('profil')} style={{ overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {user.photo ? (
+                  <img src={assetUrl(user.photo)} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  (user.initials || user.name?.charAt(0) || "?").substring(0, 2)
+                )}
               </div>
             </div>
           </div>
