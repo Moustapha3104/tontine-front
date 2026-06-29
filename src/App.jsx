@@ -2256,6 +2256,7 @@ function NotificationsPage() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all'); // all | unread
+  const [selected, setSelected] = useState(null); // notification ouverte dans le modal
 
   const load = async () => {
     setLoading(true);
@@ -2273,8 +2274,88 @@ function NotificationsPage() {
 
   const shown = filter === 'unread' ? items.filter(n => !n.read) : items;
 
+  const openNotif = async (n) => {
+    setSelected(n);
+    if (!n.read) {
+      await api.markNotificationRead(n.id).catch(() => {});
+      setItems(prev => prev.map(x => x.id === n.id ? { ...x, read: 1 } : x));
+    }
+  };
+
+  const typeColor = {
+    rappel: 'var(--warning)',
+    tirage: 'var(--primary)',
+    tirage_gagnant: '#FFD700',
+    success: 'var(--success)',
+    error: 'var(--danger)',
+    info: 'var(--grey)',
+  };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: "8px 0 16px" }}>
+
+      {/* Modal de détail notification */}
+      {selected && (
+        <div onClick={() => setSelected(null)} style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 1000,
+          display: "flex", alignItems: "center", justifyContent: "center", padding: 20
+        }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 24,
+            padding: 28, maxWidth: 480, width: "100%", display: "flex", flexDirection: "column", gap: 18,
+            boxShadow: "0 20px 60px rgba(0,0,0,0.5)"
+          }}>
+            {/* Header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ fontSize: 36 }}>{selected.icon || "🔔"}</div>
+                <div>
+                  <div style={{
+                    fontSize: 11, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.8px",
+                    color: typeColor[selected.type] || "var(--grey)", marginBottom: 2
+                  }}>
+                    {selected.type || "info"}
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--mid)" }}>
+                    {new Date(selected.created_at).toLocaleString('fr-FR', {
+                      day: '2-digit', month: 'long', year: 'numeric',
+                      hour: '2-digit', minute: '2-digit'
+                    })}
+                  </div>
+                </div>
+              </div>
+              <button onClick={() => setSelected(null)} style={{
+                background: "var(--surface-hover)", border: "1px solid var(--border)", color: "var(--white)",
+                borderRadius: 10, width: 32, height: 32, display: "flex", alignItems: "center",
+                justifyContent: "center", cursor: "pointer", fontSize: 16, flexShrink: 0
+              }}>✕</button>
+            </div>
+
+            {/* Séparateur */}
+            <div style={{ borderTop: "1px solid var(--border)" }} />
+
+            {/* Contenu du message */}
+            <div style={{
+              fontSize: 15, color: "var(--white)", lineHeight: 1.7,
+              whiteSpace: "pre-wrap", wordBreak: "break-word",
+              maxHeight: "50vh", overflowY: "auto", padding: "4px 0"
+            }}>
+              {selected.texte}
+            </div>
+
+            {/* Bouton fermer */}
+            <button onClick={() => setSelected(null)} style={{
+              background: "var(--primary)", color: "#fff", border: "none", borderRadius: 14,
+              padding: "12px 20px", fontWeight: 900, cursor: "pointer", fontSize: 14,
+              boxShadow: "0 4px 14px var(--primary-glow)"
+            }}>
+              Fermer
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* En-tête */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 8 }}>
         <div>
           <div className="sc-label" style={{ marginBottom: 4 }}>{t('notif_center')}</div>
@@ -2284,12 +2365,11 @@ function NotificationsPage() {
           <button onClick={() => setFilter(f => f === 'all' ? 'unread' : 'all')} className="btn-o" style={{ fontSize: 11, padding: "6px 12px" }}>
             {filter === 'all' ? t('notif_unread') : t('notif_all')}
           </button>
-          <button onClick={async () => { await api.markAllNotificationsRead().catch(() => { }); load(); }} className="btn-w" style={{ fontSize: 11, padding: "6px 12px", background: "var(--primary)", color: "#fff", border: "none" }}>
+          <button onClick={async () => { await api.markAllNotificationsRead().catch(() => {}); load(); }} className="btn-w" style={{ fontSize: 11, padding: "6px 12px", background: "var(--primary)", color: "#fff", border: "none" }}>
             {t('notif_mark_all_read')}
           </button>
         </div>
       </div>
-
 
       {loading ? (
         <div style={{ padding: 24, textAlign: "center", color: "var(--grey)" }}>{t('notif_loading')}</div>
@@ -2298,26 +2378,35 @@ function NotificationsPage() {
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {shown.map(n => (
-            <div key={n.id} className="tr" onClick={async () => {
-              if (!n.read) await api.markNotificationRead(n.id).catch(() => { });
-              load();
-            }} style={{
+            <div key={n.id} className="tr" onClick={() => openNotif(n)} style={{
               cursor: "pointer",
-              opacity: n.read ? 0.6 : 1,
-              borderLeft: n.read ? "none" : "3px solid var(--primary)"
+              opacity: n.read ? 0.55 : 1,
+              borderLeft: n.read ? "none" : `3px solid ${typeColor[n.type] || 'var(--primary)'}`,
+              transition: "all 0.2s ease"
             }}>
               <div style={{ fontSize: 20, marginRight: 12 }}>{n.icon || "🔔"}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
-                  <div style={{ fontWeight: 700, fontSize: 13, textTransform: "uppercase", color: "var(--grey)" }}>{n.type || "info"}</div>
+                  <div style={{
+                    fontWeight: 700, fontSize: 13, textTransform: "uppercase",
+                    color: typeColor[n.type] || "var(--grey)"
+                  }}>{n.type || "info"}</div>
                   <div style={{ fontSize: 11, color: "var(--mid)" }}>{new Date(n.created_at).toLocaleDateString('fr-FR')}</div>
                 </div>
-                <div style={{ marginTop: 4, fontSize: 14, color: "var(--white)", lineHeight: 1.4 }}>{n.texte}</div>
+                <div style={{
+                  marginTop: 4, fontSize: 14, color: "var(--white)", lineHeight: 1.4,
+                  overflow: "hidden", textOverflow: "ellipsis",
+                  display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical"
+                }}>{n.texte}</div>
+                {n.texte && n.texte.length > 80 && (
+                  <div style={{ fontSize: 11, color: "var(--primary)", marginTop: 4, fontWeight: 700 }}>
+                    Appuyez pour lire la suite →
+                  </div>
+                )}
               </div>
             </div>
           ))}
         </div>
-
       )}
     </div>
   );
@@ -3054,19 +3143,10 @@ function Main() {
   // Auto-refresh polling (30s) + Focus Refresh
   useEffect(() => {
     if (!user) return;
-
-    // Rafraîchissement automatique toutes les 30 secondes
-    const interval = setInterval(() => {
-      refreshData();
-    }, 30000);
-
+    const interval = setInterval(() => { refreshData(); }, 30000);
     const handleFocus = () => refreshData();
     window.addEventListener('focus', handleFocus);
-
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener('focus', handleFocus);
-    };
+    return () => { clearInterval(interval); window.removeEventListener('focus', handleFocus); };
   }, [user, refreshData]);
 
   if (loading) return (
@@ -3090,7 +3170,17 @@ function Main() {
       : <RegisterPage key={loginKey} onLogin={() => setAuthPage('login')} onBack={() => setAuthPage('landing')} />;
   }
 
+  // ── Bottom nav items (5 max for mobile)
+  const bottomNavItems = [
+    { id: "home", label: t('nav_home'), Icon: PremiumHomeIcon },
+    { id: "finances", label: t('nav_finances'), Icon: PremiumFinanceIcon },
+    { id: "tontines", label: t('nav_tontines'), Icon: PremiumTontineIcon },
+    { id: "notifications", label: t('nav_notifications'), Icon: PremiumNotifIcon },
+    { id: "parametres", label: t('nav_settings'), Icon: PremiumProfileIcon },
+  ];
+
   const navItems = [
+
     { id: "home", label: t('nav_home'), Icon: PremiumHomeIcon, group: "Principal" },
     { id: "finances", label: t('nav_finances'), Icon: PremiumFinanceIcon, group: "Gestion" },
     ...(isGerant ? [{ id: "membres", label: t('nav_members'), Icon: PremiumMembersIcon, group: "Gestion" }] : []),
@@ -3106,7 +3196,7 @@ function Main() {
       <style>{GLOBAL_CSS}</style>
 
       <div className="shell">
-        {/* SIDEBAR */}
+        {/* SIDEBAR — visible desktop only (CSS handles hide on mobile) */}
         <div className="sb">
           <div className="sb-head">
             <div className="sb-brand">
@@ -3166,7 +3256,7 @@ function Main() {
               {page !== 'home' && (
                 <button onClick={() => setPage('home')} style={{
                   background: 'var(--surface-hover)', border: '1px solid var(--border)',
-                  color: 'var(--white)', width: 32, height: 32, borderRadius: 10,
+                  color: 'var(--white)', width: 36, height: 36, borderRadius: 10,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   cursor: 'pointer', flexShrink: 0
                 }}>
@@ -3197,9 +3287,6 @@ function Main() {
               <div className="icon-btn" onClick={() => setPage('notifications')} aria-label={t('nav_notifications')} title={t('nav_notifications')} role="button" tabIndex="0">
                 <PremiumNotifIcon />
                 <div className="dot-badge"></div>
-              </div>
-              <div className="icon-btn" aria-label={t('search')} title={t('search')} role="button" tabIndex="0">
-                <SearchIcon />
               </div>
               <div className="av-topbar" onClick={() => setPage('profil')}>
                 {(user.initials || user.name?.charAt(0) || "?").substring(0, 2)}
@@ -3248,8 +3335,25 @@ function Main() {
         </div>
       </div>
 
+      {/* BOTTOM NAV — mobile only, hidden on desktop via CSS */}
+      <nav className="bottom-nav">
+        {bottomNavItems.map(({ id, label, Icon }) => (
+          <button
+            key={id}
+            className={`bn-item ${page === id ? 'on' : ''}`}
+            onClick={() => setPage(id)}
+            aria-label={label}
+          >
+            {id === 'notifications' && <span className="bn-badge" />}
+            <Icon />
+            <span className="bn-label">{label}</span>
+          </button>
+        ))}
+      </nav>
+
 
       {modal === "cotiser" && <CotiserModal onClose={() => setModal(null)} onSuccess={refreshData} userName={user.name} membreId={membres.find(m => m.user_id === user.id)?.id} />}
+
       {modal === "loan" && <LoanModal onClose={() => setModal(null)} onSuccess={refreshData} membreId={membres.find(m => m.user_id === user.id)?.id} />}
       {modal === "message" && selectedMemberWithMessage && <MessageModal onClose={() => { setModal(null); setSelectedMemberWithMessage(null); }} membre={selectedMemberWithMessage} />}
       {modal === "createMember" && isGerant && <CreateMemberModal onClose={() => setModal(null)} onSuccess={() => { setModal(null); refreshData(); }} />}
